@@ -3,7 +3,7 @@
 #include <linux/init.h>
 #include <linux/kthread.h>  // for threads
 
-#define MAXTHREADS  1
+#define MAXTHREADS  2
 #define MAXITERS    50000
 #define ARRAYSIZE   MAXITERS*MAXTHREADS
 
