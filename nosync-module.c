@@ -2,6 +2,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/kthread.h>  // for threads
+#include <linux/spinlock.h>
 
 #define MAXTHREADS  2
 #define MAXITERS    50000
@@ -30,6 +31,12 @@ static volatile struct buffer store_buffer;
  * store_buffer.
  */
 static volatile struct buffer idx_history;
+
+/*
+ * This is a spinlock guarding the accesses to store_buffer and
+ * idx_history.
+ */
+DEFINE_SPINLOCK(buffers_lock);
 
 /* The task structure for Thread1 */
 static struct task_struct *threads[MAXTHREADS + 1];
@@ -99,8 +106,11 @@ int thread_fn(void *arg)
 	for (iter = 0; iter < MAXITERS; iter++) {
 		int cur_idx;
 
+		spin_lock(&buffers_lock);
 		cur_idx = write_buffer(&store_buffer, myarg);
 		write_buffer(&idx_history, cur_idx);
+		spin_unlock(&buffers_lock);
+
 		schedule();
 	}
 
