@@ -227,7 +227,13 @@ int master_fn(void *arg)
 		if (done)
 			break;
 
-		schedule();
+		spin_lock(&buffers_lock);
+		print_observed_thread_buffer();
+		print_observed_idx_history();
+		print_expected_idx_history();
+		spin_unlock(&buffers_lock);
+
+		schedule_timeout_interruptible(1);
 	}
 
 	printk(KERN_EMERG "Master Thread: Tallying the data\n");
