@@ -42,10 +42,38 @@ static volatile bool threads_done[MAXTHREADS + 1];
  */
 int write_buffer(volatile struct buffer *buf, int val)
 {
-	int cur_idx = buf->idx;
+	int cur_idx;
+	int new_idx;
+	int ret;
+
+	do {
+		cur_idx = buf->idx;
+		new_idx = cur_idx + 1;
+
+		/*
+		 * cmpxchg(ptr, oldval, newval) does the following:
+		 *
+		 * It atomically checks if the value of the memory
+		 * pointed to by @ptr is the same as @oldval, and if
+		 * so, it sets the value of the memory pointed to by
+		 * @ptr to @newval.
+		 *
+		 * It returns the original value of the memory pointed
+		 * to by @ptr.
+		 *
+		 * atomic {
+		 *      ptrval = *ptr;
+		 *
+		 *      if (ptrval == oldval)
+		 *          *ptr = newval
+		 *
+		 *      return ptrval;
+		 * }
+		 */
+		ret = cmpxchg(&buf->idx, cur_idx, new_idx);
+	} while (ret != cur_idx);
 
 	buf->elements[cur_idx] = val;
-	buf->idx = cur_idx + 1;
 
 	return cur_idx;
 }
