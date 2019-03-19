@@ -25,6 +25,12 @@ struct buffer {
  */
 static volatile struct buffer store_buffer;
 
+/*
+ * This is a shared buffer recording the evolution of the index of the
+ * store_buffer.
+ */
+static volatile struct buffer idx_history;
+
 /* The task structure for Thread1 */
 static struct task_struct *threads[MAXTHREADS + 1];
 
@@ -91,7 +97,10 @@ int thread_fn(void *arg)
 
 	printk(KERN_EMERG "Thread%02d: entering the loop\n", myarg);
 	for (iter = 0; iter < MAXITERS; iter++) {
-		write_buffer(&store_buffer, myarg);
+		int cur_idx;
+
+		cur_idx = write_buffer(&store_buffer, myarg);
+		write_buffer(&idx_history, cur_idx);
 		schedule();
 	}
 
@@ -135,6 +144,37 @@ void print_expected_thread_buffer(void)
 	for (tid = 1; tid < MAXTHREADS + 1; tid++)
 		printk(KERN_EMERG "\t\t count%02d = %d", tid, MAXITERS);
 	printk(KERN_EMERG "\t\t extras = %d\n", 0);
+}
+
+void print_observed_idx_history(void)
+{
+	int non_monotone_count = 0;
+	int i;
+
+	/*
+	 * We expect that the idx_history[elements] to evolve in a
+	 * monotonically increasing manner.
+	 *
+	 * i.e,
+	 * if i < j, then
+	 * idx_history.elements[i] < idx_history.elements[j]
+	 *
+	 * Hence take note of any non-monotonicity in the evolution.
+	 */
+	for (i = 0; i < idx_history.idx - 1; i++) {
+		if (idx_history.elements[i + 1] <= idx_history.elements[i])
+			non_monotone_count++;
+	}
+
+	printk(KERN_EMERG "Observed: non_monotone_count = %d\n",
+	       non_monotone_count);
+}
+
+
+void print_expected_idx_history(void)
+{
+	printk(KERN_EMERG "Expected: non_monotone_count = %d\n",
+	       0);
 }
 
 /*
@@ -183,6 +223,8 @@ int master_fn(void *arg)
 	printk(KERN_EMERG "Master Thread: Tallying the data\n");
 	print_observed_thread_buffer();
 	print_expected_thread_buffer();
+	print_observed_idx_history();
+	print_expected_idx_history();
 	return 0;
 }
 
