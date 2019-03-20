@@ -42,6 +42,9 @@ DEFINE_SPINLOCK(buffers_lock);
 /* The task structure for Thread1 */
 static struct task_struct *threads[MAXTHREADS + 1];
 
+/* The task struct for the master thread */
+struct task_struct *master;
+
 /* Thread1 writes arg1 to the buffer */
 static int thread_args[MAXTHREADS + 1];
 
@@ -106,6 +109,9 @@ int thread_fn(void *arg)
 	printk(KERN_EMERG "Thread%02d: entering the loop\n", myarg);
 	for (iter = 0; iter < MAXITERS; iter++) {
 		int cur_idx;
+
+		if (kthread_should_stop())
+			break;
 
 		spin_lock(&buffers_lock);
 		cur_idx = write_buffer(&store_buffer, myarg);
@@ -224,6 +230,9 @@ int master_fn(void *arg)
 	while (1) {
 		bool done = true;
 
+		if (kthread_should_stop())
+			break;
+
 		for (tid = 1; tid < MAXTHREADS + 1; tid++)
 			done = done && threads_done[tid];
 		if (done)
@@ -242,7 +251,6 @@ int master_fn(void *arg)
 
 int thread_init(void)
 {
-	struct task_struct *master;
 
 	master = kthread_run(master_fn, NULL, "master_thread");
 
@@ -261,6 +269,15 @@ static int __init two_threads_init(void)
 
 static void __exit two_threads_cleanup(void)
 {
+	int tid;
+
+	for (tid = 1; tid < MAXTHREADS + 1; tid++) {
+		printk(KERN_EMERG "Stopping %s\n", threads[tid]->comm);
+		kthread_stop(threads[tid]);
+	}
+
+	printk(KERN_EMERG "Stopping %s\n", master->comm);
+	kthread_stop(master);
 	printk(KERN_ERR "======    Goodbye!!    ======\n");
 	return;
 }
