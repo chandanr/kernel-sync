@@ -187,6 +187,47 @@ void print_expected_idx_history(void)
 	       0);
 }
 
+void print_product_sum(void)
+{
+	int count = store_buffer.idx;
+	u64 product_sum = 0, i;
+
+	if (idx_history.idx < count)
+		count = idx_history.idx;
+
+	for (i = 0; i < count; i++)
+		product_sum += idx_history.elements[i]*store_buffer.elements[i];
+
+	printk(KERN_EMERG "Product Sum Thread: The product-sum for %d elements is %lld\n",
+	       count, product_sum);
+}
+
+int product_sum_fn(void *arg)
+{
+	int tid;
+
+	printk(KERN_EMERG "Product Sum Thread: Ready to run");
+	while (1) {
+
+		bool done = true;
+
+		for (tid = 1; tid < MAXTHREADS + 1; tid++)
+			done = done && threads_done[tid];
+		if (done)
+			break;
+
+		spin_lock(&buffers_lock);
+		print_product_sum();
+		spin_unlock(&buffers_lock);
+
+		schedule_timeout_interruptible(1);
+	}
+
+	print_product_sum();
+
+	return 0;
+}
+
 /*
  * This is the function for the master thread.
  *
@@ -246,12 +287,16 @@ int master_fn(void *arg)
 
 int thread_init(void)
 {
-	struct task_struct *master;
+	struct task_struct *master, *product_sum;
 
 	master = kthread_run(master_fn, NULL, "master_thread");
 
 	if (IS_ERR(master))
 		printk(KERN_EMERG "Error creating the master thread\n");
+
+	product_sum = kthread_run(product_sum_fn, NULL, "product_sum_thread");
+	if (IS_ERR(product_sum))
+		printk(KERN_EMERG "Error creating product sum thread\n");
 
 	return 0;
 }
