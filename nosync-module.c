@@ -4,6 +4,7 @@
 #include <linux/kthread.h>  // for threads
 #include <linux/spinlock.h>
 #include <linux/delay.h>
+#include <linux/mutex.h>
 
 #define MAXTHREADS  5
 #define MAXITERS    50000
@@ -37,7 +38,7 @@ static volatile struct buffer idx_history;
  * This is a spinlock guarding the accesses to store_buffer and
  * idx_history.
  */
-DEFINE_SPINLOCK(buffers_lock);
+DEFINE_MUTEX(buffers_mutex);
 
 /* The task structure for Thread1 */
 static struct task_struct *threads[MAXTHREADS + 1];
@@ -113,11 +114,11 @@ int thread_fn(void *arg)
 		if (kthread_should_stop())
 			break;
 
-		spin_lock(&buffers_lock);
+		mutex_lock(&buffers_mutex);
 		cur_idx = write_buffer(&store_buffer, myarg);
 		msleep(10);
 		write_buffer(&idx_history, cur_idx);
-		spin_unlock(&buffers_lock);
+		mutex_unlock(&buffers_mutex);
 
 		schedule();
 	}
