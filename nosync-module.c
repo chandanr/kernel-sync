@@ -217,14 +217,16 @@ int product_sum_fn(void *arg)
 			break;
 
 		spin_lock(&buffers_lock);
+		printk(KERN_EMERG "+++++++++++++++++++  START  ++++++++++++++++++++++++");
 		print_product_sum();
+		printk(KERN_EMERG "+++++++++++++++++++++ END ++++++++++++++++++++++++++");
 		spin_unlock(&buffers_lock);
 
 		schedule_timeout_interruptible(1);
 	}
-
+	printk(KERN_EMERG "+++++++++++++++++++  START  ++++++++++++++++++++++++");
 	print_product_sum();
-
+	printk(KERN_EMERG "+++++++++++++++++++++ END ++++++++++++++++++++++++++");
 	return 0;
 }
 
@@ -269,19 +271,23 @@ int master_fn(void *arg)
 			break;
 
 		spin_lock(&buffers_lock);
+		printk(KERN_EMERG "xxxxxxxxxxxxxxxxxxx  START  xxxxxxxxxxxxxxxxxxxxxxxx");
 		print_observed_thread_buffer();
 		print_observed_idx_history();
 		print_expected_idx_history();
+		printk(KERN_EMERG "xxxxxxxxxxxxxxxxxxxxx END xxxxxxxxxxxxxxxxxxxxxxxxxx");
 		spin_unlock(&buffers_lock);
 
 		schedule_timeout_interruptible(1);
 	}
 
 	printk(KERN_EMERG "Master Thread: Tallying the data\n");
+	printk(KERN_EMERG "xxxxxxxxxxxxxxxxxxx  START  xxxxxxxxxxxxxxxxxxxxxxxx");
 	print_observed_thread_buffer();
 	print_expected_thread_buffer();
 	print_observed_idx_history();
 	print_expected_idx_history();
+	printk(KERN_EMERG "xxxxxxxxxxxxxxxxxxxxx END xxxxxxxxxxxxxxxxxxxxxxxxxx");
 	return 0;
 }
 
