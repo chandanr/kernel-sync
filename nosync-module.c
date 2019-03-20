@@ -3,6 +3,7 @@
 #include <linux/init.h>
 #include <linux/kthread.h>  // for threads
 #include <linux/spinlock.h>
+#include <linux/rwlock.h>
 
 #define MAXTHREADS  2
 #define MAXITERS    50000
@@ -36,7 +37,7 @@ static volatile struct buffer idx_history;
  * This is a spinlock guarding the accesses to store_buffer and
  * idx_history.
  */
-DEFINE_SPINLOCK(buffers_lock);
+DEFINE_RWLOCK(buffers_lock);
 
 /* The task structure for Thread1 */
 static struct task_struct *threads[MAXTHREADS + 1];
@@ -106,10 +107,10 @@ int thread_fn(void *arg)
 	for (iter = 0; iter < MAXITERS; iter++) {
 		int cur_idx;
 
-		spin_lock(&buffers_lock);
+		write_lock(&buffers_lock);
 		cur_idx = write_buffer(&store_buffer, myarg);
 		write_buffer(&idx_history, cur_idx);
-		spin_unlock(&buffers_lock);
+		write_unlock(&buffers_lock);
 
 		schedule();
 	}
@@ -216,11 +217,11 @@ int product_sum_fn(void *arg)
 		if (done)
 			break;
 
-		spin_lock(&buffers_lock);
+		read_lock(&buffers_lock);
 		printk(KERN_EMERG "+++++++++++++++++++  START  ++++++++++++++++++++++++");
 		print_product_sum();
 		printk(KERN_EMERG "+++++++++++++++++++++ END ++++++++++++++++++++++++++");
-		spin_unlock(&buffers_lock);
+		read_unlock(&buffers_lock);
 
 		schedule_timeout_interruptible(1);
 	}
@@ -270,13 +271,13 @@ int master_fn(void *arg)
 		if (done)
 			break;
 
-		spin_lock(&buffers_lock);
+		read_lock(&buffers_lock);
 		printk(KERN_EMERG "xxxxxxxxxxxxxxxxxxx  START  xxxxxxxxxxxxxxxxxxxxxxxx");
 		print_observed_thread_buffer();
 		print_observed_idx_history();
 		print_expected_idx_history();
 		printk(KERN_EMERG "xxxxxxxxxxxxxxxxxxxxx END xxxxxxxxxxxxxxxxxxxxxxxxxx");
-		spin_unlock(&buffers_lock);
+		read_unlock(&buffers_lock);
 
 		schedule_timeout_interruptible(1);
 	}
