@@ -3,8 +3,9 @@
 #include <linux/init.h>
 #include <linux/kthread.h>  // for threads
 #include <linux/spinlock.h>
+#include <linux/delay.h>
 
-#define MAXTHREADS  2
+#define MAXTHREADS  5
 #define MAXITERS    50000
 #define ARRAYSIZE   MAXITERS*MAXTHREADS
 
@@ -108,6 +109,7 @@ int thread_fn(void *arg)
 
 		spin_lock(&buffers_lock);
 		cur_idx = write_buffer(&store_buffer, myarg);
+		msleep(10);
 		write_buffer(&idx_history, cur_idx);
 		spin_unlock(&buffers_lock);
 
